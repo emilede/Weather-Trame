@@ -15,15 +15,15 @@ def render_today_page():
     - Hourly forecast with expandable cards
     """
     
-    with html.Div(classes="today-page"):
+    with html.Div():
         # Location Header
         html.H1(
             "{{ location.name }} Weather",
-            classes="text-h4 font-weight-bold mb-4 white--text"
+            classes="text-h4 font-weight-bold mb-4"
         )
         
         # Current Conditions Hero Card
-        with v3.VCard(classes="current-conditions-card mb-6", elevation=0):
+        with v3.VCard(classes="current-conditions-card mb-6", elevation=0, rounded="lg"):
             with v3.VCardText(classes="pa-6"):
                 with v3.VRow(align="center"):
                     # Weather Icon
@@ -31,19 +31,18 @@ def render_today_page():
                         v3.VIcon(
                             "mdi-weather-cloudy",
                             size="80",
-                            color="white"
                         )
                     # Temperature
                     with v3.VCol(cols="auto"):
                         html.Span(
                             "{{ weather_data.temp }}°",
-                            classes="text-h1 font-weight-bold white--text"
+                            classes="text-h1 font-weight-bold"
                         )
                 
                 # Condition text
                 html.Div(
                     "{{ weather_data.condition }}",
-                    classes="text-h5 white--text mt-2"
+                    classes="text-h5 mt-2"
                 )
                 
                 # Feels like / Day / Night
@@ -51,11 +50,11 @@ def render_today_page():
                     "Feels Like {{ weather_data.feels_like }}° · "
                     "Day {{ weather_data.temp_high }}° · "
                     "Night {{ weather_data.temp_low }}°",
-                    classes="text-body-1 white--text opacity-80 mt-1"
+                    classes="text-body-1 text-medium-emphasis mt-1"
                 )
         
         # Details Grid
-        with v3.VCard(classes="details-card mb-6", elevation=0):
+        with v3.VCard(classes="mb-6", elevation=1, rounded="lg"):
             with v3.VCardText(classes="pa-4"):
                 with v3.VRow():
                     # Left column
@@ -75,9 +74,9 @@ def render_today_page():
                         _detail_row("mdi-weather-sunset-down", "Sunset", "{{ weather_data.sunset }}")
         
         # Hourly Weather Section
-        html.H2("Hourly Weather", classes="text-h5 font-weight-bold mb-3 white--text")
+        html.H2("Hourly Weather", classes="text-h5 font-weight-bold mb-3")
         
-        with v3.VCard(classes="hourly-card", elevation=0):
+        with v3.VCard(elevation=1, rounded="lg"):
             with v3.VCardText(classes="pa-0"):
                 # Condition label
                 with html.Div(classes="pa-4 pb-2"):
@@ -146,15 +145,15 @@ def render_today_page():
 
 def _detail_row(icon, label, value):
     """Helper to create a detail row in the grid"""
-    with html.Div(classes="detail-row d-flex align-center py-3"):
-        v3.VIcon(icon, size="20", classes="mr-3 opacity-70")
-        html.Span(label, classes="detail-label flex-grow-1")
-        html.Span(value, classes="detail-value font-weight-medium")
+    with html.Div(classes="d-flex align-center py-3 border-b-thin"):
+        v3.VIcon(icon, size="20", classes="mr-3 text-medium-emphasis")
+        html.Span(label, classes="text-medium-emphasis flex-grow-1")
+        html.Span(value, classes="font-weight-medium")
 
 
 def _hourly_detail(label, value):
     """Helper to create an hourly detail item"""
     with v3.VCol(cols=3):
-        with html.Div(classes="hourly-detail"):
-            html.Div(label, classes="text-caption opacity-60")
+        with html.Div(classes="py-1"):
+            html.Div(label, classes="text-caption text-medium-emphasis")
             html.Div(value, classes="text-body-2")

@@ -12,13 +12,13 @@ def render_radar_page():
     Will show interactive radar map with weather overlays.
     """
     
-    with html.Div(classes="radar-page"):
+    with html.Div():
         html.H1(
             "Weather Radar",
-            classes="text-h4 font-weight-bold mb-4 white--text"
+            classes="text-h4 font-weight-bold mb-4"
         )
         
-        with v3.VCard(classes="placeholder-card", elevation=0):
+        with v3.VCard(elevation=1, rounded="lg"):
             with v3.VCardText(classes="pa-8 text-center"):
                 v3.VIcon(
                     "mdi-radar",
@@ -28,9 +28,9 @@ def render_radar_page():
                 )
                 html.Div(
                     "Weather Radar Coming Soon",
-                    classes="text-h6 grey--text"
+                    classes="text-h6 text-medium-emphasis"
                 )
                 html.Div(
                     "This page will show interactive radar with precipitation overlays",
-                    classes="text-body-2 grey--text mt-2"
+                    classes="text-body-2 text-medium-emphasis mt-2"
                 )

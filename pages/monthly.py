@@ -12,13 +12,13 @@ def render_monthly_page():
     Will show monthly calendar with weather trends.
     """
     
-    with html.Div(classes="monthly-page"):
+    with html.Div():
         html.H1(
             "Monthly Forecast",
-            classes="text-h4 font-weight-bold mb-4 white--text"
+            classes="text-h4 font-weight-bold mb-4"
         )
         
-        with v3.VCard(classes="placeholder-card", elevation=0):
+        with v3.VCard(elevation=1, rounded="lg"):
             with v3.VCardText(classes="pa-8 text-center"):
                 v3.VIcon(
                     "mdi-calendar-month",
@@ -28,9 +28,9 @@ def render_monthly_page():
                 )
                 html.Div(
                     "Monthly Forecast Coming Soon",
-                    classes="text-h6 grey--text"
+                    classes="text-h6 text-medium-emphasis"
                 )
                 html.Div(
                     "This page will show monthly weather calendar and trends",
-                    classes="text-body-2 grey--text mt-2"
+                    classes="text-body-2 text-medium-emphasis mt-2"
                 )

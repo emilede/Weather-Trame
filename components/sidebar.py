@@ -8,46 +8,48 @@ from trame.widgets import vuetify3 as v3, html
 
 def create_sidebar():
     """
-    Creates the sidebar navigation with weather.com styling.
-    Buttons trigger page navigation via the navigate_to controller.
+    Creates the sidebar navigation with Vuetify's built-in navigation patterns.
+    Uses v-model binding to update current_page state directly.
     """
     
     # Navigation items configuration
     nav_items = [
-        {"icon": "mdi-weather-sunny", "label": "Today", "page": "today"},
-        {"icon": "mdi-clock-outline", "label": "Hourly", "page": "hourly"},
-        {"icon": "mdi-calendar-week", "label": "10 Day", "page": "ten_day"},
-        {"icon": "mdi-calendar-month", "label": "Monthly", "page": "monthly"},
-        {"icon": "mdi-radar", "label": "Radar", "page": "radar"},
+        {"icon": "mdi-weather-sunny", "label": "Today", "value": "today"},
+        {"icon": "mdi-clock-outline", "label": "Hourly", "value": "hourly"},
+        {"icon": "mdi-calendar-week", "label": "10 Day", "value": "ten_day"},
+        {"icon": "mdi-calendar-month", "label": "Monthly", "value": "monthly"},
+        {"icon": "mdi-radar", "label": "Radar", "value": "radar"},
     ]
     
     with v3.VNavigationDrawer(
         permanent=True,
-        width="220",
-        classes="sidebar",
+        width=220,
     ):
         # Logo / Brand area
-        with v3.VListItem(classes="sidebar-header pa-4"):
+        with v3.VListItem(classes="pa-4"):
             with html.Div(classes="d-flex align-center"):
-                v3.VIcon("mdi-weather-partly-cloudy", size="32", color="white")
-                html.Span("Weather", classes="text-h6 ml-2 font-weight-bold white--text")
+                v3.VIcon("mdi-weather-partly-cloudy", size="32", color="primary")
+                html.Span("Weather", classes="text-h6 ml-2 font-weight-bold")
         
-        v3.VDivider(classes="sidebar-divider")
+        v3.VDivider()
         
-        # Navigation List
-        with v3.VList(nav=True, density="comfortable", classes="pa-2"):
+        # Navigation List - click handlers directly update state
+        with v3.VList(
+            nav=True,
+            density="comfortable",
+            classes="pa-2"
+        ):
             for item in nav_items:
                 v3.VListItem(
                     prepend_icon=item["icon"],
                     title=item["label"],
-                    value=item["page"],
-                    active=f"current_page === '{item['page']}'",
-                    click=f"navigate_to('{item['page']}')",
-                    classes="sidebar-nav-item mb-1",
+                    value=item["value"],
+                    active=(f"current_page === '{item['value']}'",),
+                    click=f"current_page = '{item['value']}'",
                     rounded="lg",
                 )
         
-        v3.VDivider(classes="sidebar-divider mt-2")
+        v3.VDivider(classes="mt-2")
         
         # Additional sections (placeholders, non-functional for now)
         with v3.VList(density="compact", classes="pa-2"):
@@ -57,7 +59,6 @@ def create_sidebar():
                         v_bind="props",
                         prepend_icon="mdi-alert",
                         title="Severe Weather",
-                        classes="sidebar-nav-item",
                     )
                 v3.VListItem(title="Alerts", classes="pl-8", disabled=True)
                 v3.VListItem(title="Warnings", classes="pl-8", disabled=True)
@@ -68,7 +69,6 @@ def create_sidebar():
                         v_bind="props",
                         prepend_icon="mdi-heart-pulse",
                         title="Health & Wellness",
-                        classes="sidebar-nav-item",
                     )
                 v3.VListItem(title="Allergies", classes="pl-8", disabled=True)
                 v3.VListItem(title="Flu", classes="pl-8", disabled=True)
