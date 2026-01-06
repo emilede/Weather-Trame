@@ -9,7 +9,7 @@ from trame.widgets import vuetify3 as v3, html
 def create_sidebar():
     """
     Creates the sidebar navigation with Vuetify's built-in navigation patterns.
-    Uses v-model binding to update current_page state directly.
+    Includes search bar for Oregon cities.
     """
     
     # Navigation items configuration
@@ -23,7 +23,7 @@ def create_sidebar():
     
     with v3.VNavigationDrawer(
         permanent=True,
-        width=220,
+        width=260,
     ):
         # Logo / Brand area
         with v3.VListItem(classes="pa-4"):
@@ -33,7 +33,43 @@ def create_sidebar():
         
         v3.VDivider()
         
-        # Navigation List - click handlers directly update state
+        # Search Section
+        with html.Div(classes="pa-3"):
+            v3.VTextField(
+                v_model=("search_query",),
+                label="Search Oregon cities",
+                prepend_inner_icon="mdi-magnify",
+                density="compact",
+                variant="outlined",
+                hide_details=True,
+                clearable=True,
+            )
+            
+            # Search Results Dropdown
+            with v3.VList(
+                v_if="search_results.length > 0",
+                density="compact",
+                classes="mt-2 rounded border",
+            ):
+                v3.VListItem(
+                    v_for="(city, index) in search_results",
+                    key="index",
+                    title=("city.display_name",),
+                    prepend_icon="mdi-map-marker",
+                    click="selected_city = city; search_query = ''",
+                )
+        
+        v3.VDivider()
+        
+        # Current Location Display
+        with html.Div(classes="pa-3"):
+            with html.Div(classes="d-flex align-center text-caption text-medium-emphasis"):
+                v3.VIcon("mdi-map-marker", size="16", classes="mr-1")
+                html.Span("{{ location.name }}")
+        
+        v3.VDivider()
+        
+        # Navigation List
         with v3.VList(
             nav=True,
             density="comfortable",
@@ -48,27 +84,3 @@ def create_sidebar():
                     click=f"current_page = '{item['value']}'",
                     rounded="lg",
                 )
-        
-        v3.VDivider(classes="mt-2")
-        
-        # Additional sections (placeholders, non-functional for now)
-        with v3.VList(density="compact", classes="pa-2"):
-            with v3.VListGroup(value="severe"):
-                with html.Template(v_slot_activator="{ props }"):
-                    v3.VListItem(
-                        v_bind="props",
-                        prepend_icon="mdi-alert",
-                        title="Severe Weather",
-                    )
-                v3.VListItem(title="Alerts", classes="pl-8", disabled=True)
-                v3.VListItem(title="Warnings", classes="pl-8", disabled=True)
-            
-            with v3.VListGroup(value="health"):
-                with html.Template(v_slot_activator="{ props }"):
-                    v3.VListItem(
-                        v_bind="props",
-                        prepend_icon="mdi-heart-pulse",
-                        title="Health & Wellness",
-                    )
-                v3.VListItem(title="Allergies", classes="pl-8", disabled=True)
-                v3.VListItem(title="Flu", classes="pl-8", disabled=True)
