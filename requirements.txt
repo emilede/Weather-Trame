@@ -3,6 +3,14 @@
 # Trame framework
 trame>=3.0.0
 trame-vuetify>=2.0.0
+trame-vtk>=2.0.0
+
+# VTK for radar visualization
+vtk>=9.2.0
+
+# Numerical/image processing
+numpy>=1.21.0
+pillow>=9.0.0
 
 # HTTP requests for API calls
 requests>=2.28.0

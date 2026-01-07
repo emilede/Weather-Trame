@@ -3,9 +3,9 @@ Weather-Trame Application
 Main entry point for the Trame-based weather dashboard
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
-from trame.app import get_server
+from trame.app import get_server, asynchronous
 from trame.ui.vuetify3 import SinglePageLayout
 from trame.widgets import vuetify3 as v3, html
 
@@ -15,7 +15,8 @@ from pages.hourly import render_hourly_page
 from pages.ten_day import render_ten_day_page
 from pages.monthly import render_monthly_page
 from pages.radar import render_radar_page
-from api.weather import fetch_all_weather, group_forecast_by_date, search_cities
+from api.weather_noaa import fetch_all_weather, group_forecast_by_date, search_cities
+from api.radar import RadarVisualization
 
 
 # -----------------------------------------------------------------------------
@@ -38,6 +39,78 @@ state.location = {
 state.search_query = ""
 state.search_results = []
 state.selected_city = None
+
+# Radar state
+state.radar_frame_index = 0
+state.radar_max_frames = 11  # 0-11 = 12 frames
+state.radar_playing = False
+state.radar_time_display = "Loading..."
+
+
+# -----------------------------------------------------------------------------
+# Radar Visualization Setup
+# -----------------------------------------------------------------------------
+
+radar_viz = RadarVisualization()
+radar_initialized = False
+
+
+@ctrl.add("refresh_radar")
+def refresh_radar():
+    """Refresh radar data from server."""
+    global radar_initialized
+    print("Refreshing radar data...")
+    radar_viz.load_timestamps(12)
+    state.radar_frame_index = len(radar_viz.timestamps) - 1
+    update_radar_frame()
+    radar_initialized = True
+
+
+def update_radar_frame():
+    """Update the radar visualization to current frame."""
+    if radar_viz.update_frame(state.radar_frame_index):
+        state.radar_time_display = radar_viz.get_current_time_str()
+        if hasattr(ctrl, 'radar_view_update'):
+            ctrl.radar_view_update()
+
+
+@state.change("radar_frame_index")
+def on_radar_frame_change(radar_frame_index, **kwargs):
+    """React to radar frame slider changes."""
+    if radar_initialized:
+        update_radar_frame()
+
+
+@state.change("radar_playing")
+def on_radar_play_change(radar_playing, **kwargs):
+    """Handle play/pause state changes."""
+    if radar_playing and radar_initialized:
+        advance_radar_animation()
+
+
+@state.change("current_page")
+def on_page_change(current_page, **kwargs):
+    """Initialize radar when user navigates to radar page."""
+    global radar_initialized
+    if current_page == "radar" and not radar_initialized:
+        print("Initializing radar on first visit...")
+        radar_viz.load_timestamps(12)
+        state.radar_frame_index = len(radar_viz.timestamps) - 1
+        update_radar_frame()
+        radar_initialized = True
+
+
+@asynchronous.task
+async def advance_radar_animation():
+    """Animate through radar frames."""
+    import asyncio
+    while state.radar_playing:
+        await asyncio.sleep(0.5)  # 500ms between frames
+        if state.radar_frame_index < state.radar_max_frames:
+            state.radar_frame_index += 1
+        else:
+            state.radar_frame_index = 0  # Loop back
+        state.flush()
 
 
 # -----------------------------------------------------------------------------
@@ -169,7 +242,7 @@ with SinglePageLayout(server) as layout:
                             with v3.VWindowItem(value="monthly"):
                                 render_monthly_page()
                             with v3.VWindowItem(value="radar"):
-                                render_radar_page()
+                                render_radar_page(radar_viz.render_window, ctrl)
 
 
 # -----------------------------------------------------------------------------
