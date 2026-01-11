@@ -8,6 +8,20 @@ trame-vtk>=2.0.0
 # VTK for radar visualization
 vtk>=9.2.0
 
+# Radar data parsing
+arm-pyart
+
+# Nowcasting
+pysteps
+
+# HRRR model data
+herbie
+xarray
+cfgrib
+
+# AWS access for NEXRAD
+boto3
+
 # Numerical/image processing
 numpy>=1.21.0
 pillow>=9.0.0
@@ -17,5 +31,3 @@ requests>=2.28.0
 
 # Environment variable management
 python-dotenv>=1.0.0
-
-arm-pyart

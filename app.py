@@ -16,7 +16,13 @@ from pages.ten_day import render_ten_day_page
 from pages.monthly import render_monthly_page
 from pages.radar import render_radar_page
 from api.weather_noaa import fetch_all_weather, group_forecast_by_date, search_cities
-from api.radar import get_timestamp
+
+from components.radar_vtk import create_radar_renderer
+from api.radar_processor import get_reflectivity_for_vtk
+from api.radar_processor import create_composite_grid
+
+import pytz
+
 
 
 # -----------------------------------------------------------------------------
@@ -40,20 +46,36 @@ state.search_query = ""
 state.search_results = []
 state.selected_city = None
 
-# Radar state (simple)
-state.radar_key = 0
-state.radar_time = get_timestamp()
+# Radar state - load VTK visualization (composite)
+print("Loading radar data...")
+from api.nexrad import get_oregon_radars
+from api.radar_processor import create_composite
 
-
-# -----------------------------------------------------------------------------
-# Radar refresh
-# -----------------------------------------------------------------------------
-
-@state.change("radar_key")
-def on_radar_refresh(radar_key, **kwargs):
-    """Update timestamp when radar is refreshed."""
-    state.radar_time = get_timestamp()
-
+radar_files = get_oregon_radars()
+if radar_files:
+    radar_data = create_composite_grid(radar_files)
+    if radar_data:
+        radar_renderer, radar_render_window = create_radar_renderer(radar_data)
+        pacific = pytz.timezone('America/Los_Angeles')
+        radar_time_py = datetime(
+            radar_data['time'].year,
+            radar_data['time'].month,
+            radar_data['time'].day,
+            radar_data['time'].hour,
+            radar_data['time'].minute,
+            radar_data['time'].second,
+            tzinfo=timezone.utc
+        )
+        state.radar_time_display = radar_time_py.astimezone(pacific).strftime("%b %d, %Y %I:%M %p PT")
+        print(f"Radar loaded: {radar_data['grid'].shape} grid from {len(radar_data['stations'])} stations")
+    else:
+        print("WARNING: Could not create composite")
+        radar_render_window = None
+        state.radar_time_display = "No data available"
+else:
+    print("WARNING: Could not fetch radar data")
+    radar_render_window = None
+    state.radar_time_display = "No data available"
 
 # -----------------------------------------------------------------------------
 # Weather Data Functions
@@ -177,7 +199,7 @@ with SinglePageLayout(server) as layout:
                             with v3.VWindowItem(value="monthly"):
                                 render_monthly_page()
                             with v3.VWindowItem(value="radar"):
-                                render_radar_page()
+                                render_radar_page(radar_render_window, state.radar_time_display)
 
 
 # -----------------------------------------------------------------------------
