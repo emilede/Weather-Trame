@@ -6,7 +6,7 @@ Main entry point for the Trame-based weather dashboard
 from datetime import datetime, timezone
 
 from trame.app import get_server
-from trame.ui.vuetify3 import SinglePageLayout
+from trame.ui.vuetify3 import VAppLayout
 from trame.widgets import vuetify3 as v3, html
 
 from components.sidebar import create_sidebar
@@ -18,11 +18,9 @@ from pages.radar import render_radar_page
 from api.weather_noaa import fetch_all_weather, group_forecast_by_date, search_cities
 
 from components.radar_vtk import create_radar_renderer
-from api.radar_processor import get_reflectivity_for_vtk
 from api.radar_processor import create_composite_grid
 
 import pytz
-
 
 
 # -----------------------------------------------------------------------------
@@ -31,6 +29,40 @@ import pytz
 
 server = get_server()
 state, ctrl = server.state, server.controller
+
+
+# -----------------------------------------------------------------------------
+# Helper Functions
+# -----------------------------------------------------------------------------
+
+def get_weather_background(condition):
+    """Get background URL based on condition."""
+    if not condition:
+        return "https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=1200&q=80"
+    
+    condition_lower = condition.lower()
+    
+    backgrounds = {
+        "sunny": "https://images.unsplash.com/photo-1601297183305-6df142704ea2?w=1200&q=80",
+        "clear": "https://images.unsplash.com/photo-1601297183305-6df142704ea2?w=1200&q=80",
+        "cloudy": "https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=1200&q=80",
+        "partly": "https://images.unsplash.com/photo-1594156596782-656c93e4d504?w=1200&q=80",
+        "overcast": "https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=1200&q=80",
+        "rain": "https://images.unsplash.com/photo-1519692933481-e162a57d6721?w=1200&q=80",
+        "drizzle": "https://images.unsplash.com/photo-1519692933481-e162a57d6721?w=1200&q=80",
+        "snow": "https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=1200&q=80",
+        "fog": "https://images.unsplash.com/photo-1487621167305-5d248087c724?w=1200&q=80",
+        "mist": "https://images.unsplash.com/photo-1487621167305-5d248087c724?w=1200&q=80",
+        "storm": "https://images.unsplash.com/photo-1605727216801-e27ce1d0cc28?w=1200&q=80",
+        "thunder": "https://images.unsplash.com/photo-1605727216801-e27ce1d0cc28?w=1200&q=80",
+    }
+    
+    for key, url in backgrounds.items():
+        if key in condition_lower:
+            return url
+    
+    return "https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=1200&q=80"
+
 
 # -----------------------------------------------------------------------------
 # Initial State
@@ -45,11 +77,11 @@ state.location = {
 state.search_query = ""
 state.search_results = []
 state.selected_city = None
+state.weather_bg = "https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=1200&q=80"
 
 # Radar state - load VTK visualization (composite)
 print("Loading radar data...")
 from api.nexrad import get_oregon_radars
-from api.radar_processor import create_composite
 
 radar_files = get_oregon_radars()
 if radar_files:
@@ -77,6 +109,7 @@ else:
     radar_render_window = None
     state.radar_time_display = "No data available"
 
+
 # -----------------------------------------------------------------------------
 # Weather Data Functions
 # -----------------------------------------------------------------------------
@@ -87,6 +120,7 @@ def load_weather_data(lat, lon):
     
     if current_weather:
         state.weather_data = current_weather
+        state.weather_bg = get_weather_background(current_weather['condition'])
         print(f"Current weather: {current_weather['temp']}°F, {current_weather['condition']}")
     else:
         print("Failed to fetch current weather")
@@ -159,6 +193,7 @@ if not load_weather_data(state.location["lat"], state.location["lon"]):
         "sunset": "4:48 pm",
         "dew_point": 40,
     }
+    state.weather_bg = get_weather_background("Clouds")
     state.hourly_data = []
     state.hourly_grouped = []
     state.hourly_preview = []
@@ -169,37 +204,29 @@ if not load_weather_data(state.location["lat"], state.location["lon"]):
 # UI Layout
 # -----------------------------------------------------------------------------
 
-with SinglePageLayout(server) as layout:
-    layout.title.set_text("Weather-Trame")
-    layout.toolbar.hide()
+with VAppLayout(server, theme="dark") as layout:
+    html.Style("""
+        .date-header { 
+            background-color: rgba(var(--v-theme-surface-variant), 0.3); 
+        }
+    """)
     
-    with layout.content:
-        html.Style("""
-            .current-conditions-card { 
-                background: linear-gradient(135deg, #4a6fa5 0%, #2d3a4a 100%) !important; 
-            }
-            .date-header { 
-                background-color: rgba(var(--v-theme-surface-variant), 0.3); 
-            }
-        """)
+    with v3.VLayout():
+        create_sidebar()
         
-        with v3.VApp(theme="dark"):
-            with v3.VLayout():
-                create_sidebar()
-                
-                with v3.VMain():
-                    with v3.VContainer(fluid=True, classes="pa-6"):
-                        with v3.VWindow(v_model=("current_page",)):
-                            with v3.VWindowItem(value="today"):
-                                render_today_page()
-                            with v3.VWindowItem(value="hourly"):
-                                render_hourly_page()
-                            with v3.VWindowItem(value="ten_day"):
-                                render_ten_day_page()
-                            with v3.VWindowItem(value="monthly"):
-                                render_monthly_page()
-                            with v3.VWindowItem(value="radar"):
-                                render_radar_page(radar_render_window, state.radar_time_display)
+        with v3.VMain():
+            with v3.VContainer(fluid=True, classes="pa-6"):
+                with v3.VWindow(v_model=("current_page",)):
+                    with v3.VWindowItem(value="today"):
+                        render_today_page()
+                    with v3.VWindowItem(value="hourly"):
+                        render_hourly_page()
+                    with v3.VWindowItem(value="ten_day"):
+                        render_ten_day_page()
+                    with v3.VWindowItem(value="monthly"):
+                        render_monthly_page()
+                    with v3.VWindowItem(value="radar"):
+                        render_radar_page(radar_render_window, state.radar_time_display)
 
 
 # -----------------------------------------------------------------------------

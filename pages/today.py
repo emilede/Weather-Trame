@@ -10,7 +10,7 @@ def render_today_page():
     """
     Renders the Today page with:
     - Location header
-    - Current conditions hero card
+    - Current conditions hero card with dynamic background
     - Details grid (wind, humidity, etc.)
     - Hourly forecast with expandable cards
     """
@@ -22,14 +22,19 @@ def render_today_page():
             classes="text-h4 font-weight-bold mb-4"
         )
         
-        # Current Conditions Hero Card
-        with v3.VCard(classes="current-conditions-card mb-6", elevation=0, rounded="lg"):
+        # Current Conditions Hero Card with dynamic background
+        with v3.VCard(
+            classes="mb-6", 
+            elevation=0, 
+            rounded="lg",
+            style=("'background: linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0.3)), url(' + weather_bg + '); background-size: cover; background-position: center;'",),
+        ):
             with v3.VCardText(classes="pa-6"):
                 with v3.VRow(align="center"):
                     # Weather Icon
                     with v3.VCol(cols="auto"):
                         v3.VIcon(
-                            "mdi-weather-cloudy",
+                            "{{ weather_data.icon }}",
                             size="80",
                         )
                     # Temperature
@@ -81,18 +86,17 @@ def render_today_page():
                 # Condition label
                 with html.Div(classes="pa-4 pb-2"):
                     with html.Div(classes="d-flex align-center"):
-                        v3.VIcon("mdi-weather-cloudy", size="20", color="primary", classes="mr-2")
-                        html.Span("Cloudy", classes="text-primary")
+                        v3.VIcon("{{ weather_data.icon }}", size="20", color="primary", classes="mr-2")
+                        html.Span("{{ weather_data.condition }}", classes="text-primary")
                 
                 # Hourly expansion panels
                 with v3.VExpansionPanels(variant="accordion", classes="hourly-panels"):
-                    # Loop through hourly preview data (first 4 hours)
                     with v3.VExpansionPanel(
                         v_for="(hour, index) in hourly_preview",
                         key="index",
                         classes="hourly-panel",
                     ):
-                        # Panel Header (collapsed view)
+                        # Panel Header
                         with v3.VExpansionPanelTitle(classes="hourly-panel-header"):
                             with v3.VRow(align="center", classes="w-100"):
                                 with v3.VCol(cols=1, classes="text-body-2"):
@@ -120,27 +124,19 @@ def render_today_page():
                                         html.Div("Precipitation", classes="text-caption opacity-60")
                                         html.Div("{{ hour.precipitation }} in", classes="text-body-2")
                         
-                        # Panel Content (expanded view)
+                        # Panel Content
                         with v3.VExpansionPanelText():
                             with v3.VRow(classes="pa-2"):
-                                # Row 1
                                 _hourly_detail("Feels Like", "{{ hour.feels_like }}°")
                                 _hourly_detail("Precip Amount", "{{ hour.precipitation }} in")
                                 _hourly_detail("Wind", "{{ hour.wind_speed }} mph {{ hour.wind_direction }}")
                                 _hourly_detail("Pressure", "{{ hour.pressure }} in")
                                 
                             with v3.VRow(classes="pa-2"):
-                                # Row 2
                                 _hourly_detail("Cloud Cover", "{{ hour.cloud_cover }}%")
                                 _hourly_detail("Dew Point", "{{ hour.dew_point }}°")
                                 _hourly_detail("UV Index", "{{ hour.uv_index }} of 11")
                                 _hourly_detail("Visibility", "{{ hour.visibility }} mi")
-                                
-                            with v3.VRow(classes="pa-2"):
-                                # Row 3
-                                _hourly_detail("Air Quality", "{{ hour.air_quality }} - {{ hour.air_quality_label }}")
-                                _hourly_detail("Humidity", "{{ hour.humidity }}%")
-                                _hourly_detail("Wind Gust", "{{ hour.wind_gust || '--' }}")
 
 
 def _detail_row(icon, label, value):
