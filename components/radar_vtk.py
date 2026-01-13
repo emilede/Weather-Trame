@@ -1,21 +1,18 @@
 """
 Radar VTK Visualization
-Creates VTK actors from radar data - image-based rendering
+Creates VTK actors from radar data - image-based rendering with precip type colors
 """
 
 import numpy as np
-from vtkmodules.vtkCommonCore import vtkLookupTable
+from vtkmodules.vtkCommonCore import vtkUnsignedCharArray
 from vtkmodules.vtkCommonDataModel import vtkImageData
 from vtkmodules.vtkRenderingCore import (
-    vtkActor,
     vtkRenderer,
     vtkRenderWindow,
     vtkRenderWindowInteractor,
     vtkImageSlice,
     vtkImageSliceMapper,
-    vtkImageProperty,
 )
-from vtkmodules.vtkRenderingAnnotation import vtkScalarBarActor
 from vtkmodules.vtkInteractionStyle import vtkInteractorStyleImage
 import vtkmodules.vtkRenderingOpenGL2  # noqa
 
@@ -35,10 +32,109 @@ class MapInteractorStyle(vtkInteractorStyleImage):
         self.EndPan()
 
 
+def create_radar_image_actor(radar_data):
+    """
+    Create VTK image actor from radar grid data.
+    Uses RGBA precip type colors if available, otherwise falls back to reflectivity.
+    """
+    if radar_data.get('rgba') is not None:
+        return create_rgba_actor(radar_data)
+    else:
+        return create_reflectivity_actor(radar_data)
+
+
+def create_rgba_actor(radar_data):
+    """Create actor from pre-computed RGBA grid."""
+    rgba = radar_data['rgba']
+    ny, nx, _ = rgba.shape
+    
+    image = vtkImageData()
+    image.SetDimensions(nx, ny, 1)
+    image.SetSpacing(
+        (radar_data['x_max'] - radar_data['x_min']) / nx,
+        (radar_data['y_max'] - radar_data['y_min']) / ny,
+        1.0
+    )
+    image.SetOrigin(radar_data['x_min'], radar_data['y_min'], 0)
+    
+    colors = vtkUnsignedCharArray()
+    colors.SetNumberOfComponents(4)
+    colors.SetNumberOfTuples(nx * ny)
+    colors.SetName("RGBA")
+    
+    for j in range(ny):
+        for i in range(nx):
+            idx = j * nx + i
+            colors.SetTuple4(
+                idx,
+                int(rgba[j, i, 0]),
+                int(rgba[j, i, 1]),
+                int(rgba[j, i, 2]),
+                int(rgba[j, i, 3])
+            )
+    
+    image.GetPointData().SetScalars(colors)
+    
+    mapper = vtkImageSliceMapper()
+    mapper.SetInputData(image)
+    mapper.BorderOn()
+    
+    actor = vtkImageSlice()
+    actor.SetMapper(mapper)
+    
+    return actor
+
+
+def create_reflectivity_actor(radar_data):
+    """Fallback: create actor from reflectivity with standard colors."""
+    from vtkmodules.vtkCommonCore import vtkLookupTable
+    from vtkmodules.vtkRenderingCore import vtkImageProperty
+    
+    grid = radar_data['grid']
+    ny, nx = grid.shape
+    
+    image = vtkImageData()
+    image.SetDimensions(nx, ny, 1)
+    image.SetSpacing(
+        (radar_data['x_max'] - radar_data['x_min']) / nx,
+        (radar_data['y_max'] - radar_data['y_min']) / ny,
+        1.0
+    )
+    image.SetOrigin(radar_data['x_min'], radar_data['y_min'], 0)
+    
+    image.AllocateScalars(10, 1)
+    
+    for j in range(ny):
+        for i in range(nx):
+            val = grid[j, i]
+            if np.isnan(val):
+                val = -999
+            image.SetScalarComponentFromFloat(i, j, 0, 0, val)
+    
+    lut = create_radar_lut()
+    
+    mapper = vtkImageSliceMapper()
+    mapper.SetInputData(image)
+    mapper.BorderOn()
+    
+    prop = vtkImageProperty()
+    prop.SetLookupTable(lut)
+    prop.SetColorWindow(105)
+    prop.SetColorLevel(22.5)
+    prop.SetInterpolationTypeToLinear()
+    prop.UseLookupTableScalarRangeOn()
+    
+    actor = vtkImageSlice()
+    actor.SetMapper(mapper)
+    actor.SetProperty(prop)
+    
+    return actor
+
+
 def create_radar_lut():
-    """
-    Create lookup table with standard radar reflectivity colors.
-    """
+    """Create lookup table for reflectivity-only rendering."""
+    from vtkmodules.vtkCommonCore import vtkLookupTable
+    
     lut = vtkLookupTable()
     lut.SetNumberOfTableValues(256)
     lut.SetRange(-30, 75)
@@ -83,79 +179,16 @@ def create_radar_lut():
     return lut
 
 
-def create_radar_image_actor(radar_data):
-    """
-    Create VTK image actor from radar grid data.
-    """
-    grid = radar_data['grid']
-    ny, nx = grid.shape
-    
-    # Create image data
-    image = vtkImageData()
-    image.SetDimensions(nx, ny, 1)
-    image.SetSpacing(
-        (radar_data['x_max'] - radar_data['x_min']) / nx,
-        (radar_data['y_max'] - radar_data['y_min']) / ny,
-        1.0
-    )
-    image.SetOrigin(radar_data['x_min'], radar_data['y_min'], 0)
-    
-    # Fill with data
-    image.AllocateScalars(10, 1)  # VTK_FLOAT = 10
-    
-    for j in range(ny):
-        for i in range(nx):
-            val = grid[j, i]
-            if np.isnan(val):
-                val = -999  # Mark as no data
-            image.SetScalarComponentFromFloat(i, j, 0, 0, val)
-    
-    # Create mapper
-    mapper = vtkImageSliceMapper()
-    mapper.SetInputData(image)
-    mapper.BorderOn()
-    
-    # Create image property with LUT
-    lut = create_radar_lut()
-    
-    prop = vtkImageProperty()
-    prop.SetLookupTable(lut)
-    prop.SetColorWindow(105)  # Range width (-30 to 75)
-    prop.SetColorLevel(22.5)  # Center of range
-    prop.SetInterpolationTypeToLinear()
-    prop.UseLookupTableScalarRangeOn()
-    
-    # Create image slice actor
-    actor = vtkImageSlice()
-    actor.SetMapper(mapper)
-    actor.SetProperty(prop)
-    
-    return actor, lut
-
-
-def create_scalar_bar(lut):
-    """Create a legend/scalar bar for dBZ values."""
-    scalar_bar = vtkScalarBarActor()
-    scalar_bar.SetLookupTable(lut)
-    scalar_bar.SetTitle("dBZ")
-    scalar_bar.SetNumberOfLabels(6)
-    scalar_bar.SetWidth(0.08)
-    scalar_bar.SetHeight(0.6)
-    scalar_bar.SetPosition(0.9, 0.2)
-    return scalar_bar
-
-
 def create_radar_renderer(radar_data):
-    """
-    Create complete renderer with radar visualization.
-    """
+    """Create complete renderer with radar and overlays."""
     from components.state_boundries import create_state_actor
+    from components.map_overlays import create_city_actors
     
     renderer = vtkRenderer()
-    renderer.SetBackground(0.1, 0.1, 0.15)
+    renderer.SetBackground(0.1, 0.1, 0.18)
     
-    # Add radar image
-    radar_actor, lut = create_radar_image_actor(radar_data)
+    # Add radar layer
+    radar_actor = create_radar_image_actor(radar_data)
     renderer.AddViewProp(radar_actor)
     
     # Add state boundaries
@@ -164,8 +197,13 @@ def create_radar_renderer(radar_data):
         renderer.AddActor(all_states_actor)
     if oregon_actor:
         renderer.AddActor(oregon_actor)
-        
-    # Set up camera for top-down 2D view
+    
+    # Add cities
+    city_actors = create_city_actors()
+    for actor in city_actors:
+        renderer.AddActor(actor)
+    
+    # Set up camera
     camera = renderer.GetActiveCamera()
     camera.SetPosition(0, 0, 1000)
     camera.SetFocalPoint(0, 0, 0)
@@ -174,12 +212,10 @@ def create_radar_renderer(radar_data):
     renderer.ResetCamera()
     camera.SetParallelScale(500)
     
-    # Create render window
     render_window = vtkRenderWindow()
     render_window.AddRenderer(renderer)
     render_window.SetSize(800, 800)
     
-    # Custom interactor
     interactor = vtkRenderWindowInteractor()
     interactor.SetRenderWindow(render_window)
     style = MapInteractorStyle()
