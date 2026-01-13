@@ -235,6 +235,53 @@ def create_composite_grid(radar_files, grid_shape=(800, 800), grid_limits_km=500
         traceback.print_exc()
         return None
 
+def create_composite_with_precip_type(radar_files, grid_shape=(800, 800), grid_limits_km=500):
+    """
+    Create composite with precipitation type classification.
+    """
+    composite = create_composite_grid(radar_files, grid_shape, grid_limits_km)
+    
+    if composite is None:
+        return None
+    
+    print("Fetching HRRR temperature data...")
+    from api.hrrr import get_latest_hrrr_temps, regrid_to_radar
+    
+    hrrr_data = get_latest_hrrr_temps()
+    
+    if hrrr_data is None:
+        print("WARNING: Could not fetch HRRR data, using reflectivity only")
+        composite['precip_type'] = None
+        composite['rgba'] = None
+        return composite
+    
+    print("Regridding HRRR to radar grid...")
+    radar_bounds = {
+        'x_min': composite['x_min'],
+        'x_max': composite['x_max'],
+        'y_min': composite['y_min'],
+        'y_max': composite['y_max'],
+    }
+    
+    temps = regrid_to_radar(hrrr_data, grid_shape, radar_bounds)
+    
+    print("Classifying precipitation type...")
+    from api.precip_classifier import classify_precip_type, create_rgba_grid
+    
+    precip_type = classify_precip_type(
+        composite['grid'],
+        temps['temp_2m'],
+        temps['temp_850']
+    )
+    
+    rgba = create_rgba_grid(composite['grid'], precip_type)
+    
+    composite['precip_type'] = precip_type
+    composite['rgba'] = rgba
+    
+    print("Precip classification complete")
+    
+    return composite
 
 # Quick test
 if __name__ == "__main__":
